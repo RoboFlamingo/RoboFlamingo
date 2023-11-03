@@ -1,6 +1,6 @@
 # Vision-Language Foundation Models as Effective Robot Imitators
 
-This is the official code repo for the paper [Vision-Language Foundation Models as Effective Robot Imitators](https://arxiv.org/pdf/2204.06252.pdf).
+This is the official code repo for the paper [Vision-Language Foundation Models as Effective Robot Imitators](https://arxiv.org/abs/2311.01378).
 
 ![RoboFlamingo](/assets/images/framework.png)
 
