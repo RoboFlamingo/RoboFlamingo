@@ -2,7 +2,7 @@
 
 This is the official code repo for the paper [Vision-Language Foundation Models as Effective Robot Imitators](https://arxiv.org/pdf/2204.06252.pdf).
 
-![RoboFlamingo](assets/images/framework.png)
+![RoboFlamingo](/assets/images/framework.png)
 
 **RoboFlamingo** is a pre-trained-VLM-based robotics model that learns a wide variety of language conditioned robot skills by fine-tuning on offline free-form imitation datasets. 
 By exceeding the state-of-the-art performance with a large margin on the CALVIN benchmark, we show RoboFlamingo can be an effective and competitive alternative to adapt VLMs to robot control.
