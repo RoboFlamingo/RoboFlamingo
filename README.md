@@ -144,5 +144,9 @@ License: [MIT](https://github.com/mlfoundations/open_flamingo/blob/main/LICENSE)
 
 ## Cite our work:
 ```
-{}
+@article{li2023roboflamingo,
+  title     = {Vision-Language Foundation Models as Effective Robot Imitators},
+  author    = {Li, Xinghang and Liu, Minghuan and Zhang, Hanbo and Yu, Cunjun and Xu, Jie and Wu, Hongtao and Cheang, Chilam and Jing, Ya and Zhang, Weinan and Liu, Huaping and Li, Hang and Kong, Tao},
+  journal={arXiv preprint arXiv:2311.01378},
+  year={2023}
 ```
