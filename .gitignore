@@ -19,7 +19,6 @@ logs/*
 *.pth
 RobotFlamingoDBG*
 eval_ckpts_*
-*.png
 cross_att_layer.json
 enrich*
 egl_check/
