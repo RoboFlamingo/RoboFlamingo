@@ -4,15 +4,15 @@ This is the official code repo for the paper [Vision-Language Foundation Models 
 
 ![RoboFlamingo](/assets/images/framework.png)
 
-**RoboFlamingo** is a pre-trained-VLM-based robotics model that learns a wide variety of language conditioned robot skills by fine-tuning on offline free-form imitation datasets. 
-By exceeding the state-of-the-art performance with a large margin on the CALVIN benchmark, we show RoboFlamingo can be an effective and competitive alternative to adapt VLMs to robot control.
+**RoboFlamingo** is a pre-trained-VLM-based robotics model that learns a wide variety of language-conditioned robot skills by fine-tuning on offline free-form imitation datasets. 
+By exceeding the state-of-the-art performance with a large margin on the CALVIN benchmark, we show that RoboFlamingo can be an effective and competitive alternative to adapt VLMs to robot control.
 Our extensive experimental results also reveal several interesting conclusions regarding the behavior of different pre-trained VLMs on manipulation tasks.
 We believe RoboFlamingo has the potential to be a cost-effective and easy-to-use solution for robotics manipulation, empowering everyone with the ability to fine-tune their own robotics policy.
 
 ## Usage
 ### Initializing a RoboFlamingo model
-We support pretrained vision encoders from the [OpenCLIP](https://github.com/mlfoundations/open_clip) package, which includes OpenAI's pretrained models. 
-We also support pretrained language models from the `transformers` package, such as [MPT](https://huggingface.co/models?search=mosaicml%20mpt), [RedPajama](https://huggingface.co/models?search=redpajama), [LLaMA](https://huggingface.co/models?search=llama), [OPT](https://huggingface.co/models?search=opt), [GPT-Neo](https://huggingface.co/models?search=gpt-neo), [GPT-J](https://huggingface.co/models?search=gptj), and [Pythia](https://huggingface.co/models?search=pythia) models.
+We support pre trained vision encoders from the [OpenCLIP](https://github.com/mlfoundations/open_clip) package, which includes OpenAI's pre-trained models. 
+We also support pre-trained language models from the `transformers` package, such as [MPT](https://huggingface.co/models?search=mosaicml%20mpt), [RedPajama](https://huggingface.co/models?search=redpajama), [LLaMA](https://huggingface.co/models?search=llama), [OPT](https://huggingface.co/models?search=opt), [GPT-Neo](https://huggingface.co/models?search=gpt-neo), [GPT-J](https://huggingface.co/models?search=gptj), and [Pythia](https://huggingface.co/models?search=pythia) models.
 
 ``` python
 from robot_flamingo.factor import create_model_and_transforms
@@ -26,7 +26,7 @@ model, image_processor, tokenizer = create_model_and_transforms(
     decoder_type='lstm',
 )
 ```
-The `cross_attn_every_n_layers` argument controls how often cross attention layers are applied and should be consistent with the VLM. The `decoder_type` argument controls the type of the decoder, currently we support `lstm`, `fc`, `diffusion` and `GPT`.
+The `cross_attn_every_n_layers` argument controls how often cross-attention layers are applied and should be consistent with the VLM. The `decoder_type` argument controls the type of the decoder, currently we support `lstm`, `fc`, `diffusion` and `GPT`.
 
 ## Performance
 We report results on the [CALVIN](https://github.com/mees/calvin) benchmark.
@@ -65,7 +65,7 @@ Download the released [OpenFlamingo](https://github.com/mlfoundations/open_flami
 |4B| togethercomputer/RedPajama-INCITE-Instruct-3B-v1 | openai CLIP ViT-L/14 | 2 | 85.8 | 49.0 | 3.79 | [Link](https://huggingface.co/openflamingo/OpenFlamingo-4B-vitl-rpj3b-langinstruct)|
 |9B| anas-awadalla/mpt-7b | openai CLIP ViT-L/14 | 4 | 89.0 | 54.8 | 3.97 | [Link](https://huggingface.co/openflamingo/OpenFlamingo-9B-vitl-mpt7b)|
 
-Replace the `${lang_encoder_path}` and `${tokenizer_path}` of the path diction in `robot_flamingo/models/factory.py` for each pretrained VLM with your own paths.
+Replace the `${lang_encoder_path}` and `${tokenizer_path}` of the path dictionary (e.g., `mpt_dict`) in `robot_flamingo/models/factory.py` for each pretrained VLM with your own paths.
 
 ### Step 1
 Clone this repo
@@ -144,7 +144,7 @@ License: [MIT](https://github.com/mlfoundations/open_flamingo/blob/main/LICENSE)
 
 ## Cite our work:
 ```
-@article{li2023roboflamingo,
+@article{li2023vision,
   title     = {Vision-Language Foundation Models as Effective Robot Imitators},
   author    = {Li, Xinghang and Liu, Minghuan and Zhang, Hanbo and Yu, Cunjun and Xu, Jie and Wu, Hongtao and Cheang, Chilam and Jing, Ya and Zhang, Weinan and Liu, Huaping and Li, Hang and Kong, Tao},
   journal={arXiv preprint arXiv:2311.01378},
