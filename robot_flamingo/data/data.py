@@ -1209,7 +1209,6 @@ def get_data(args, image_processor, tokenizer, dataset_type, epoch=0):
     )
 
 def load_partial_traj_data():
-    file = open('data_name_list.txt', 'r')
-    lines = file.readlines()
-    lines = [tuple([int(_) for _ in l.split()[1:]]) for l in lines]
-    return lines
+    with open('partial_task_data.json', 'r') as f:
+        data = json.load(f)
+    return data
