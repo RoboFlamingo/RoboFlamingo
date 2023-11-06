@@ -7,11 +7,13 @@ This is the official code repo for the paper [Vision-Language Foundation Models 
 **RoboFlamingo** is a pre-trained-VLM-based robotics model that learns a wide variety of language-conditioned robot skills by fine-tuning on offline free-form imitation datasets. 
 By exceeding the state-of-the-art performance with a large margin on the CALVIN benchmark, we show that RoboFlamingo can be an effective and competitive alternative to adapt VLMs to robot control.
 Our extensive experimental results also reveal several interesting conclusions regarding the behavior of different pre-trained VLMs on manipulation tasks.
-We believe RoboFlamingo has the potential to be a cost-effective and easy-to-use solution for robotics manipulation, empowering everyone with the ability to fine-tune their own robotics policy.
+**RoboFlamingo can be trained or evaluated on a single GPU server** (GPU mem requirements depend on the model size), and we believe RoboFlamingo has the potential to be a cost-effective and easy-to-use solution for robotics manipulation, empowering everyone with the ability to fine-tune their own robotics policy.
+
+All our experiments are conducted on a single GPU server with 8 Nvidia A100 GPUs (80G).
 
 ## Usage
 ### Initializing a RoboFlamingo model
-We support pre trained vision encoders from the [OpenCLIP](https://github.com/mlfoundations/open_clip) package, which includes OpenAI's pre-trained models. 
+We support pre-trained vision encoders from the [OpenCLIP](https://github.com/mlfoundations/open_clip) package, which includes OpenAI's pre-trained models. 
 We also support pre-trained language models from the `transformers` package, such as [MPT](https://huggingface.co/models?search=mosaicml%20mpt), [RedPajama](https://huggingface.co/models?search=redpajama), [LLaMA](https://huggingface.co/models?search=llama), [OPT](https://huggingface.co/models?search=opt), [GPT-Neo](https://huggingface.co/models?search=gpt-neo), [GPT-J](https://huggingface.co/models?search=gptj), and [Pythia](https://huggingface.co/models?search=pythia) models.
 
 ``` python
