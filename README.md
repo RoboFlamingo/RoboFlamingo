@@ -2,7 +2,7 @@
 <!-- markdownlint-disable html -->
 
 <div align="center">
-  <img src="assets/images/logo.png" width="65%"/>
+  <img src="assets/images/roboflamingo.svg" width="65%"/>
 </div>
 
 <h1 align="center">Vision-Language Foundation Models as Effective Robot Imitators</h1>
