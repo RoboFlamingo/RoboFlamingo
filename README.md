@@ -2,7 +2,8 @@
 <!-- markdownlint-disable html -->
 
 <div align="center">
-  <img src="assets/images/roboflamingo.svg" width="65%"/>
+  <!-- <img src="assets/images/roboflamingo.svg" width="65%"/> -->
+  <img src="assets/images/roboflamingo.svg" width="80%"/>
 </div>
 
 <h1 align="center">Vision-Language Foundation Models as Effective Robot Imitators</h1>
@@ -11,16 +12,20 @@
 [![arXiv](https://img.shields.io/badge/arXiv-Paper-<COLOR>.svg)](https://arxiv.org/abs/2311.01378)
 [![Hugging Face](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-blue)]([https://huggingface.co/spaces/AIGC-Audio/AudioGPT](https://huggingface.co/roboflamingo/RoboFlamingo))
 
-This is the official code repo for the paper [Vision-Language Foundation Models as Effective Robot Imitators](https://arxiv.org/abs/2311.01378).
-
 ![RoboFlamingo](/assets/images/framework.png)
 
-**RoboFlamingo** is a pre-trained-VLM-based robotics model that learns a wide variety of language-conditioned robot skills by fine-tuning on offline free-form imitation datasets. 
+**RoboFlamingo** is a pre-trained-VLM-based robotics learning framework that learns a wide variety of language-conditioned robot skills by fine-tuning on offline free-form imitation datasets. 
 By exceeding the state-of-the-art performance with a large margin on the CALVIN benchmark, we show that RoboFlamingo can be an effective and competitive alternative to adapt VLMs to robot control.
 Our extensive experimental results also reveal several interesting conclusions regarding the behavior of different pre-trained VLMs on manipulation tasks.
 **RoboFlamingo can be trained or evaluated on a single GPU server** (GPU mem requirements depend on the model size), and we believe RoboFlamingo has the potential to be a cost-effective and easy-to-use solution for robotics manipulation, empowering everyone with the ability to fine-tune their own robotics policy.
 
+***
+
+This is also the official code repo for the paper [Vision-Language Foundation Models as Effective Robot Imitators](https://arxiv.org/abs/2311.01378).
+
 All our experiments are conducted on a single GPU server with 8 Nvidia A100 GPUs (80G).
+
+Pre-trained models are available on [Hugging Face](https://huggingface.co/roboflamingo/RoboFlamingo).
 
 ## Usage
 ### Initializing a RoboFlamingo model
