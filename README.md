@@ -10,7 +10,7 @@
 
 ![Python 3.8](https://img.shields.io/badge/Python-3.8-blue)
 [![arXiv](https://img.shields.io/badge/arXiv-Paper-<COLOR>.svg)](https://arxiv.org/abs/2311.01378)
-[![Hugging Face](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-blue)]([https://huggingface.co/spaces/AIGC-Audio/AudioGPT](https://huggingface.co/roboflamingo/RoboFlamingo))
+[![Hugging Face](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-blue)](https://huggingface.co/roboflamingo/RoboFlamingo)
 
 ![RoboFlamingo](/assets/images/framework.png)
 
