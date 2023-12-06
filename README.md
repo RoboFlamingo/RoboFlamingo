@@ -145,7 +145,30 @@ python eval_ckpts.py
 ```
 By adding the checkpoint name and directory into `eval_ckpts.py`, the script would automaticly load the model and evaluate it. For example, if you want to evaluate the checkpoint at path 'your-checkpoint-path', you can modify the `ckpt_dir` and `ckpt_names` variable in eval_ckpts.py, the evaluation results would be saved as 'logs/your-checkpoint-prefix.log'.
 
-## Acknowleadgement
+## Co-finetune with both robot data (CALVIN) and vision-language data (COCO caption, VQA)
+The results shown below indicate that co-training could preserve most ability of the VLM backbone on VL tasks, while losing a bit of performance on robot tasks. 
+
+### Results on the CALVIN benchmark:
+
+|Split|SR 1|SR 2|SR 3|SR 4|SR 5|Avg Len|
+|  ----  | ----  | ---- | ---- | ---- | ---- | ---- |
+|Co-Train|ABC->D|82.9%|63.6%|45.3%|32.1%|23.4%|2.473|
+|Fine-tune|ABC->D|82.4%|61.9%|46.6%|33.1%|23.5%|2.475|
+|Co-Train|ABCD->D|95.7%|85.8%|73.7%|64.5%|56.1%|3.758|
+|Fine-tune|ABCD->D|96.4%|89.6%|82.4%|74.0%|66.2%|4.086|
+|Co-Train|ABCD->D (Enrich)|67.8%|45.2%|29.4%|18.9%|11.7%|1.73|
+|Fine-tune|ABCD->D (Enrich)|72.0%|48.0%|29.9%|21.1%|14.4%|1.854|
+
+### Results on VL tasks:
+||||coco|||||VQA
+|----|----|----|----|----|----|----|----|----|
+||BLEU-1|BLEU-2|BLEU-3|BLEU-4|METEOR|ROUGE_L|CIDEr|SPICE|Acc|
+|Fine-tune (3B, zero-shot)|0.156||0.051|0.018|0.007|0.038|0.148|0.004|0.006|4.09|
+|Fine-tune (3B, 4-shot)|0.166|0.056|0.020|0.008|0.042|0.158|0.004|0.008|3.87|OpenFlamingo (3B, 4-shot) |0.608||0.459|0.329|0.232|0.220|0.491|0.808|0.164|43.86
+|Co-Train (3B, zero-shot)|0.225|0.158|0.107|0.072|0.124|0.334|0.345||0.085|36.37|Co-Train (3B, 4-shot)|0.318|0.236|0.167|0.116|0.157|0.377|0.493|0.110|38.73
+|Original Flamingo (80B, fine-tuned)|-|-|-|-|-|-|1.381|-|82.0
+
+## Acknowledgment
 This work uses code from the following open-source projects and datasets:
 
 #### CALVIN
