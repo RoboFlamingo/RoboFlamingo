@@ -15,7 +15,8 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 
 from robot_flamingo.data.data import get_data
 from open_flamingo.train.distributed import init_distributed_device, world_info_from_env
-from train_utils import get_checkpoint, train_one_epoch_calvin, train_one_epoch_calvin_diff, train_one_epoch_calvin_two_way
+from train_utils import get_checkpoint, train_one_epoch_calvin, train_one_epoch_calvin_diff, train_one_epoch_calvin_cotrain, train_one_epoch_calvin_two_way, \
+get_ckpt_name, get_ckpt_name_pattern
 from torch.distributed.elastic.multiprocessing.errors import record
 from transformers import (
     get_constant_schedule_with_warmup,
@@ -287,6 +288,15 @@ def main():
         default=False,
         action="store_true"
     )
+    # Co-Train settings
+    parser.add_argument(
+        "--cotrain",
+        default=False,
+        action="store_true"
+    )
+    parser.add_argument("--batch_size_vl", type=int, default=20)
+    parser.add_argument("--vl_task_weights", type=float, default=0.005)
+
     parser.add_argument("--global_latent", type=int, default=1)
     parser.add_argument("--save_every_iter", type=int, default=-1)
     # For GPT decoder
@@ -459,182 +469,10 @@ def main():
         )
 
     use_diff = (args.head_type == "diffusion")
-    def get_ckpt_name(epoch=-1):
-        if epoch != -1:
-            if args.use_gripper:
-                ckpt_name = 'checkpoint_gripper_{}_hist_{}_{}'.format(args.fusion_mode, args.hist_window, '' if not args.sep_resampler else 'sep_')
-            else:
-                ckpt_name = 'checkpoint_no_gripper_hist_{}_{}'.format(args.hist_window, '' if not args.sep_resampler else 'sep_')
-            if args.real_data:
-                ckpt_name += 'real_'
-            if args.train_params != -1:
-                ckpt_name += 'train_{}_'.format(args.train_params)
-            if args.no_pretrain:
-                ckpt_name += 'no_pretrain_'
-            if args.fwd_pred:
-                ckpt_name += 'pred_rgb_'
-            if args.fwd_pred_hand:
-                ckpt_name += 'pred_hand_'
-            if args.freeze_sampler:
-                ckpt_name += 'freeze_sam_'
-            if args.use_state:
-                ckpt_name += 'state_'
-            if args.rgb_pad != -1 or args.gripper_pad != -1:
-                ckpt_name += 'aug_{}_{}_'.format(args.rgb_pad, args.gripper_pad)
-            if args.use_hist:
-                ckpt_name += 'fc_'
-            if use_diff:
-                ckpt_name += 'diff_'
-            if args.traj_cons:
-                ckpt_name += 'traj_cons_'
-            if args.sep_lm_head:
-                ckpt_name += 'lm_head_'
-            if args.dif_ws:
-                ckpt_name += 'difws_{}_{}_'.format(args.min_window_size, args.max_window_size)
-            elif args.window_size != 8:
-                ckpt_name += 'ws_{}_'.format(args.window_size)
-            else:
-                pass
-            if args.unfreeze_vit:
-                ckpt_name += 'unfreeze_vit_'
-            if args.llm_name != 'llama':
-                ckpt_name += '{}_'.format(args.llm_name)
-            if args.pooling != 'max':
-                ckpt_name += '{}_'.format(args.pooling)
-            if args.text_aug:
-                ckpt_name += 'text_aug_'
-            if args.residual:
-                ckpt_name += 'res_'
-            if args.freeze_embed:
-                ckpt_name += 'freeze_emb_'
-            if args.tcp_rel:
-                ckpt_name += 'tcp_'
-            if args.multi_step_action != 1:
-                ckpt_name += '{}_fur_step_'.format(args.multi_step_action)
-            if args.decoder_type != 'lstm':
-                ckpt_name += '{}_{}_'.format(args.decoder_type, args.hidden_size)
-            if args.lr_scheduler != 'constant':
-                ckpt_name += '{}_'.format(args.lr_scheduler)
-            ckpt_name += '{}.pth'.format(epoch)
-        else:
-            if args.use_gripper:
-                ckpt_name = 'checkpoint_gripper_{}_hist_{}_{}'.format(args.fusion_mode, args.hist_window, '' if not args.sep_resampler else 'sep_')
-            else:
-                ckpt_name = 'checkpoint_no_gripper_hist_{}_{}'.format(args.hist_window, '' if not args.sep_resampler else 'sep_')
-            if args.real_data:
-                ckpt_name += 'real_'
-            if args.train_params != -1:
-                ckpt_name += 'train_{}_'.format(args.train_params)
-            if args.no_pretrain:
-                ckpt_name += 'no_pretrain_'
-            if args.fwd_pred:
-                ckpt_name += 'pred_rgb_'
-            if args.fwd_pred_hand:
-                ckpt_name += 'pred_hand_'
-            if args.freeze_sampler:
-                ckpt_name += 'freeze_sam_'
-            if args.use_state:
-                ckpt_name += 'state_'
-            if args.rgb_pad != -1 or args.gripper_pad != -1:
-                ckpt_name += 'aug_{}_{}_'.format(args.rgb_pad, args.gripper_pad)
-            if args.use_hist:
-                ckpt_name += 'fc_'
-            if use_diff:
-                ckpt_name += 'diff_'
-            if args.traj_cons:
-                ckpt_name += 'traj_cons_'
-            if args.sep_lm_head:
-                ckpt_name += 'lm_head_'
-            if args.dif_ws:
-                ckpt_name += 'difws_{}_{}_'.format(args.min_window_size, args.max_window_size)
-            elif args.window_size != 8:
-                ckpt_name += 'ws_{}_'.format(args.window_size)
-            else:
-                pass
-            if args.unfreeze_vit:
-                ckpt_name += 'unfreeze_vit_'
-            if args.llm_name != 'llama':
-                ckpt_name += '{}_'.format(args.llm_name)
-            if args.pooling != 'max':
-                ckpt_name += '{}_'.format(args.pooling)
-            if args.text_aug:
-                ckpt_name += 'text_aug_'
-            if args.residual:
-                ckpt_name += 'res_'
-            if args.freeze_embed:
-                ckpt_name += 'freeze_emb_'
-            if args.tcp_rel:
-                ckpt_name += 'tcp_'
-            if args.multi_step_action != 1:
-                ckpt_name += '{}_fur_step_'.format(args.multi_step_action)
-            if args.decoder_type != 'lstm':
-                ckpt_name += '{}_{}_'.format(args.decoder_type, args.hidden_size)
-            if args.lr_scheduler != 'constant':
-                ckpt_name += '{}_'.format(args.lr_scheduler)
-            ckpt_name += 'final_weights.pt.pth'
-        return ckpt_name
-
-    def get_ckpt_name_pattern():
-        if args.use_gripper:
-            ckpt_name = 'checkpoint_gripper_{}_hist_{}_{}'.format(args.fusion_mode, args.hist_window, '' if not args.sep_resampler else 'sep_')
-        else:
-            ckpt_name = 'checkpoint_no_gripper_hist_{}_{}'.format(args.hist_window, '' if not args.sep_resampler else 'sep_')
-        if args.real_data:
-            ckpt_name += 'real_'
-        if args.train_params != -1:
-            ckpt_name += 'train_{}_'.format(args.train_params)
-        if args.no_pretrain:
-            ckpt_name += 'no_pretrain_'
-        if args.fwd_pred:
-            ckpt_name += 'pred_rgb_'
-        if args.fwd_pred_hand:
-            ckpt_name += 'pred_hand_'
-        if args.freeze_sampler:
-            ckpt_name += 'freeze_sam_'
-        if args.use_state:
-            ckpt_name += 'state_'
-        if args.rgb_pad != -1 or args.gripper_pad != -1:
-            ckpt_name += 'aug_{}_{}_'.format(args.rgb_pad, args.gripper_pad)
-        if args.use_hist:
-            ckpt_name += 'fc_'
-        if use_diff:
-            ckpt_name += 'diff_'
-        if args.traj_cons:
-            ckpt_name += 'traj_cons_'
-        if args.sep_lm_head:
-            ckpt_name += 'lm_head_'
-        if args.dif_ws:
-            ckpt_name += 'difws_{}_{}_'.format(args.min_window_size, args.max_window_size)
-        elif args.window_size != 8:
-            ckpt_name += 'ws_{}_'.format(args.window_size)
-        else:
-            pass
-        if args.unfreeze_vit:
-            ckpt_name += 'unfreeze_vit_'
-        if args.llm_name != 'llama':
-            ckpt_name += '{}_'.format(args.llm_name)
-        if args.pooling != 'max':
-            ckpt_name += '{}_'.format(args.pooling)
-        if args.text_aug:
-            ckpt_name += 'text_aug_'
-        if args.residual:
-            ckpt_name += 'res_'
-        if args.freeze_embed:
-            ckpt_name += 'freeze_emb_'
-        if args.tcp_rel:
-            ckpt_name += 'tcp_'
-        if args.multi_step_action != 1:
-            ckpt_name += '{}_fur_step_'.format(args.multi_step_action)
-        if args.decoder_type != 'lstm':
-            ckpt_name += '{}_{}_'.format(args.decoder_type, args.hidden_size)
-        if args.lr_scheduler != 'constant':
-                ckpt_name += '{}_'.format(args.lr_scheduler)
-        ckpt_name += '*.pth'
-        return ckpt_name
     # check if a checkpoint exists for this run
 
     if os.path.exists(f"{args.run_name}") and args.resume_from_checkpoint is None:
-        ckpt_name = get_ckpt_name_pattern()
+        ckpt_name = get_ckpt_name_pattern(args)
         checkpoint_list = glob.glob(f"{args.run_name}/{ckpt_name}")
         print(ckpt_name)
         checkpoint_list = [_ for _ in checkpoint_list if "__sep" not in _ and 'iter' not in _ and 'weights' not in _]
@@ -725,7 +563,7 @@ def main():
                 "lr_scheduler_state_dict": lr_scheduler.state_dict(),
             }
 
-            ckpt_name = get_ckpt_name(epoch)
+            ckpt_name = get_ckpt_name(args, epoch)
             ckpt_path = os.path.join(args.run_name, ckpt_name)
 
             print(f"Saving checkpoint to {ckpt_path}")
@@ -738,7 +576,7 @@ def main():
         if not os.path.exists(args.run_name):
             os.makedirs(args.run_name)
 
-        ckpt_name = get_ckpt_name()
+        ckpt_name = get_ckpt_name(args,)
         torch.save(get_checkpoint(ddp_model), f"{args.run_name}/{ckpt_name}")
         if args.report_to_wandb and args.save_checkpoints_to_wandb:
             wandb.save(f"{args.run_name}/{ckpt_name}")

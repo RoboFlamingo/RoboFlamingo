@@ -138,6 +138,8 @@ torchrun --nnodes=1 --nproc_per_node=8 --master_port=6042 robot_flamingo/train/t
 
 `${log_file}` is the path to the log file.
 
+We also provide `robot_flamingo/pt_run_gripper_post_ws_12_traj_aug_mpt_dolly_3b.bash` to launch the training.
+
 
 ## Evaluating the model on the CALVIN benchmark
 ```
@@ -147,6 +149,12 @@ By adding the checkpoint name and directory into `eval_ckpts.py`, the script wou
 
 ## Co-finetune with both robot data (CALVIN) and vision-language data (COCO caption, VQA)
 The results shown below indicate that co-training could preserve most ability of the VLM backbone on VL tasks, while losing a bit of performance on robot tasks. 
+
+use
+```
+bash robot_flamingo/pt_run_gripper_post_ws_12_traj_aug_mpt_dolly_3b_co_train.bash
+```
+to launch co-train RoboFlamingo with CoCO, VQAV2 and CALVIN. You should update coco and vqa paths in `get_coco_dataset` and `get_vqa_dataset` in `robot_flamingo/data/data.py`.
 
 ### Results on the CALVIN benchmark:
 

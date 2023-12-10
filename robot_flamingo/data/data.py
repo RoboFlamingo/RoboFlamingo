@@ -82,6 +82,7 @@ from omegaconf import DictConfig
 import pyhash
 import torch
 from torch.utils.data import Dataset
+from robot_flamingo.data.vl_dataset import CaptionDataset, VQADataset
 
 hasher = pyhash.fnv1_32()
 logger = logging.getLogger(__name__)
@@ -840,25 +841,8 @@ class CalvinDataset(Dataset):
         rgb_static = Image.fromarray(frame["rgb_static"])
         rgb_gripper = Image.fromarray(frame["rgb_gripper"])
         actions = np.array(frame["rel_actions"])
-
-        # actions = []
-        # for i in range(st, ed+1):
-        #     frame = np.load(f"{self.file_prefix}/episode_{i:07d}.npz")  # , allow_pickle=True (lazy load)
-        #     actions += [frame['rel_actions']]
-        #     if i > st:
-        #         continue
-        #     rgb_static = Image.fromarray(frame['rgb_static'])
-        #     rgb_gripper = Image.fromarray(frame['rgb_gripper'])
-        # actions = np.stack(actions)[0]  # for debuging
         
         actions[..., 6:] = (actions[..., 6:] + 1) // 2
-
-        # TODO 这两个函数image_fn、attention_masks是batch的处理函数
-        # image = self.image_fn([rgb_static])[0]
-        # input_id, attention_masks = self.text_fn([text])
-    # input_id, attention_masks = input_id[0], attention_masks[0]
-
-        # return image, (input_id, attention_masks), actions
         return rgb_static, text, actions
 
     def collater(self, sample):
@@ -1009,6 +993,67 @@ def preprocess_interleaved(sample, tokenizer, clip_processor, sim_threshold):
         images_tensors,
         (text_tensor["input_ids"], text_tensor["attention_mask"]),
     )
+
+
+def get_coco_dataset(args, image_processor, tokenizer, epoch=0):
+    coco_data_dir = "path/to/coco/train2014"
+    coco_ann = "path/to/coco/annotations/captions_train2014.json"
+    preprocess_text_fn = functools.partial(preprocess_text_calvin, tokenizer=tokenizer)
+    coco_dataset = CaptionDataset(coco_data_dir, coco_ann, preprocess_text_fn, image_processor)
+    
+    sampler = DistributedSampler(
+        coco_dataset,
+        num_replicas=args.world_size,
+        rank=args.rank,
+        shuffle=True,
+        seed=args.seed,
+        drop_last=True,
+    )
+    
+    dataloader = DataLoader(
+        coco_dataset,
+        batch_size=args.batch_size_vl,
+        pin_memory=False,
+        num_workers=args.workers,
+        prefetch_factor=3,
+        sampler=sampler,
+        persistent_workers=True,
+        collate_fn=coco_dataset.collator,
+        drop_last=True
+    )
+    
+    return dataloader
+
+
+def get_vqa_dataset(args, image_processor, tokenizer, epoch=0):
+    vqa_data_dir = "path/to/vqav2/train2014"
+    vqa_questions = "path/to/vqav2/v2_OpenEnded_mscoco_train2014_questions.json"
+    vqa_ann = "path/to/vqav2/v2_mscoco_train2014_annotations.json"
+    preprocess_text_fn = functools.partial(preprocess_text_calvin, tokenizer=tokenizer)
+    vqa_dataset = VQADataset(vqa_data_dir, vqa_questions, vqa_ann, preprocess_text_fn, image_processor)
+    
+    sampler = DistributedSampler(
+        vqa_dataset,
+        num_replicas=args.world_size,
+        rank=args.rank,
+        shuffle=True,
+        seed=args.seed,
+        drop_last=True,
+    )
+    
+    dataloader = DataLoader(
+        vqa_dataset,
+        batch_size=args.batch_size_vl,
+        pin_memory=False,
+        num_workers=args.workers,
+        prefetch_factor=3,
+        sampler=sampler,
+        persistent_workers=True,
+        collate_fn=vqa_dataset.collator,
+        drop_last=True
+    )
+    
+    return dataloader
 
 
 def get_calvin_dataset(args, image_processor, tokenizer, epoch=0, floor=False):

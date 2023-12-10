@@ -7,7 +7,8 @@ import torch.nn.functional as F
 from torch.nn.parallel import DistributedDataParallel
 from tqdm import tqdm
 from robot_flamingo.utils import world_to_tcp_frame, tcp_to_world_frame
-
+import itertools
+from einops import rearrange
 
 
 def get_cast_dtype(precision: str):
@@ -27,6 +28,127 @@ def get_autocast(precision):
         return lambda: torch.cuda.amp.autocast(dtype=torch.bfloat16)
     else:
         return suppress
+    
+
+def get_ckpt_name(args, epoch=-1):
+    if args.use_gripper:
+        ckpt_name = 'checkpoint_gripper_{}_hist_{}_{}'.format(args.fusion_mode, args.hist_window, '' if not args.sep_resampler else 'sep_')
+    else:
+        ckpt_name = 'checkpoint_no_gripper_hist_{}_{}'.format(args.hist_window, '' if not args.sep_resampler else 'sep_')
+    if args.real_data:
+        ckpt_name += 'real_'
+    if args.train_params != -1:
+        ckpt_name += 'train_{}_'.format(args.train_params)
+    if args.no_pretrain:
+        ckpt_name += 'no_pretrain_'
+    if args.fwd_pred:
+        ckpt_name += 'pred_rgb_'
+    if args.fwd_pred_hand:
+        ckpt_name += 'pred_hand_'
+    if args.freeze_sampler:
+        ckpt_name += 'freeze_sam_'
+    if args.use_state:
+        ckpt_name += 'state_'
+    if args.rgb_pad != -1 or args.gripper_pad != -1:
+        ckpt_name += 'aug_{}_{}_'.format(args.rgb_pad, args.gripper_pad)
+    if args.use_hist:
+        ckpt_name += 'fc_'
+    if args.head_type == "diffusion":
+        ckpt_name += 'diff_'
+    if args.traj_cons:
+        ckpt_name += 'traj_cons_'
+    if args.sep_lm_head:
+        ckpt_name += 'lm_head_'
+    if args.dif_ws:
+        ckpt_name += 'difws_{}_{}_'.format(args.min_window_size, args.max_window_size)
+    elif args.window_size != 8:
+        ckpt_name += 'ws_{}_'.format(args.window_size)
+    if args.unfreeze_vit:
+        ckpt_name += 'unfreeze_vit_'
+    if args.llm_name != 'llama':
+        ckpt_name += '{}_'.format(args.llm_name)
+    if args.pooling != 'max':
+        ckpt_name += '{}_'.format(args.pooling)
+    if args.text_aug:
+        ckpt_name += 'text_aug_'
+    if args.residual:
+        ckpt_name += 'res_'
+    if args.freeze_embed:
+        ckpt_name += 'freeze_emb_'
+    if args.tcp_rel:
+        ckpt_name += 'tcp_'
+    if args.multi_step_action != 1:
+        ckpt_name += '{}_fur_step_'.format(args.multi_step_action)
+    if args.decoder_type != 'lstm':
+        ckpt_name += '{}_{}_'.format(args.decoder_type, args.hidden_size)
+    if args.lr_scheduler != 'constant':
+        ckpt_name += '{}_'.format(args.lr_scheduler)
+    ckpt_name += '{}.pth'.format(epoch)
+
+    if epoch != -1:
+        if epoch > 1000:
+            ckpt_name += '{}_iter.pth'.format(epoch)
+        else:
+            ckpt_name += '{}.pth'.format(epoch)
+    else:
+        ckpt_name += 'final_weights.pth'
+    return ckpt_name
+
+def get_ckpt_name_pattern(args):
+    if args.use_gripper:
+        ckpt_name = 'checkpoint_gripper_{}_hist_{}_{}'.format(args.fusion_mode, args.hist_window, '' if not args.sep_resampler else 'sep_')
+    else:
+        ckpt_name = 'checkpoint_no_gripper_hist_{}_{}'.format(args.hist_window, '' if not args.sep_resampler else 'sep_')
+    if args.real_data:
+        ckpt_name += 'real_'
+    if args.train_params != -1:
+        ckpt_name += 'train_{}_'.format(args.train_params)
+    if args.no_pretrain:
+        ckpt_name += 'no_pretrain_'
+    if args.fwd_pred:
+        ckpt_name += 'pred_rgb_'
+    if args.fwd_pred_hand:
+        ckpt_name += 'pred_hand_'
+    if args.freeze_sampler:
+        ckpt_name += 'freeze_sam_'
+    if args.use_state:
+        ckpt_name += 'state_'
+    if args.rgb_pad != -1 or args.gripper_pad != -1:
+        ckpt_name += 'aug_{}_{}_'.format(args.rgb_pad, args.gripper_pad)
+    if args.use_hist:
+        ckpt_name += 'fc_'
+    if args.head_type == "diffusion":
+        ckpt_name += 'diff_'
+    if args.traj_cons:
+        ckpt_name += 'traj_cons_'
+    if args.sep_lm_head:
+        ckpt_name += 'lm_head_'
+    if args.dif_ws:
+        ckpt_name += 'difws_{}_{}_'.format(args.min_window_size, args.max_window_size)
+    elif args.window_size != 8:
+        ckpt_name += 'ws_{}_'.format(args.window_size)
+    if args.unfreeze_vit:
+        ckpt_name += 'unfreeze_vit_'
+    if args.llm_name != 'llama':
+        ckpt_name += '{}_'.format(args.llm_name)
+    if args.pooling != 'max':
+        ckpt_name += '{}_'.format(args.pooling)
+    if args.text_aug:
+        ckpt_name += 'text_aug_'
+    if args.residual:
+        ckpt_name += 'res_'
+    if args.freeze_embed:
+        ckpt_name += 'freeze_emb_'
+    if args.tcp_rel:
+        ckpt_name += 'tcp_'
+    if args.multi_step_action != 1:
+        ckpt_name += '{}_fur_step_'.format(args.multi_step_action)
+    if args.decoder_type != 'lstm':
+        ckpt_name += '{}_{}_'.format(args.decoder_type, args.hidden_size)
+    if args.lr_scheduler != 'constant':
+            ckpt_name += '{}_'.format(args.lr_scheduler)
+    ckpt_name += '*.pth'
+    return ckpt_name
 
 def train_one_epoch_calvin_diff(
     args,
@@ -535,54 +657,6 @@ def train_one_epoch_calvin(
         avg_horizon = min(100, len(mv_avg_loss))
         t.set_postfix({"avg loss": sum(mv_avg_loss[-avg_horizon:]) / avg_horizon, "loss": loss_calvin.item(), "Lnum": loss_calvin_num.item(), "Lbin": loss_calvin_bin.item()})
 
-        def get_ckpt_name(step):
-            use_diff = (args.head_type == "diffusion")
-            if args.use_gripper:
-                ckpt_name = 'checkpoint_gripper_{}_hist_{}_{}'.format(args.fusion_mode, args.hist_window, '' if not args.sep_resampler else 'sep_')
-            else:
-                ckpt_name = 'checkpoint_no_gripper_hist_{}_{}'.format(args.hist_window, '' if not args.sep_resampler else 'sep_')
-            if args.use_state:
-                ckpt_name += 'state_'
-            if args.rgb_pad != -1 or args.gripper_pad != -1:
-                ckpt_name += 'aug_{}_{}_'.format(args.rgb_pad, args.gripper_pad)
-            if args.use_hist:
-                ckpt_name += 'fc_'
-            if use_diff:
-                ckpt_name += 'diff_'
-            if args.traj_cons:
-                ckpt_name += 'traj_cons_'
-            if args.sep_lm_head:
-                ckpt_name += 'lm_head_'
-            if args.dif_ws:
-                ckpt_name += 'difws_{}_{}_'.format(args.min_window_size, args.max_window_size)
-            elif args.window_size != 8:
-                ckpt_name += 'ws_{}_'.format(args.window_size)
-            else:
-                pass
-            if args.unfreeze_vit:
-                ckpt_name += 'unfreeze_vit_'
-            if args.llm_name != 'llama':
-                ckpt_name += '{}_'.format(args.llm_name)
-            if args.pooling != 'max':
-                ckpt_name += '{}_'.format(args.pooling)
-            if args.text_aug:
-                ckpt_name += 'text_aug_'
-            if args.residual:
-                ckpt_name += 'res_'
-            if args.freeze_embed:
-                ckpt_name += 'freeze_emb_'
-            if args.tcp_rel:
-                ckpt_name += 'tcp_'
-            if args.multi_step_action != 1:
-                ckpt_name += '{}_fur_step_'.format(args.multi_step_action)
-            if args.decoder_type != 'lstm':
-                ckpt_name += '{}_{}_'.format(args.decoder_type, args.hidden_size)
-            if args.lr_scheduler != 'constant':
-                ckpt_name += '{}_'.format(args.lr_scheduler)
-            ckpt_name += '{}_iter.pth'.format(step)
-            
-            return ckpt_name
-
         if args.save_every_iter != -1 and global_step % args.save_every_iter == 0 and global_step > 0:
                 
             if args.rank == 0:
@@ -597,13 +671,369 @@ def train_one_epoch_calvin(
                     "lr_scheduler_state_dict": lr_scheduler.state_dict(),
                 }
 
-                ckpt_name = get_ckpt_name(global_step)
+                ckpt_name = get_ckpt_name(args, global_step)
                 ckpt_path = os.path.join(args.run_name, ckpt_name)
                 print(f"Saving checkpoint to {ckpt_path}")
                 torch.save(checkpoint_dict, ckpt_path)
                 if args.delete_previous_checkpoint:
                     if epoch > 0:
                         os.remove(ckpt_path)
+
+
+def train_one_epoch_calvin_cotrain(
+    args,
+    model,
+    epoch,
+    calvin_loader,
+    coco_loader,
+    vqa_loader,
+    tokenizer,
+    optimizer,
+    lr_scheduler,
+    device_id,
+    wandb,
+):
+    # setup loaders
+    num_batches_per_epoch_calvin = calvin_loader.num_batches
+
+    num_batches_per_epoch = num_batches_per_epoch_calvin
+    total_training_steps = num_batches_per_epoch * args.num_epochs
+
+    autocast = get_autocast(args.precision)
+    cast_dtype = get_cast_dtype(args.precision)
+
+    media_token_id = tokenizer("<image>", add_special_tokens=False)["input_ids"][-1]
+    endofchunk_token_id = tokenizer("<|endofchunk|>", add_special_tokens=False)[
+        "input_ids"
+    ][-1]
+    model.train()
+
+    # setup logging
+    step_time_m = AverageMeter()
+    data_time_m = AverageMeter()
+    end = time.time()
+
+    t = tqdm(
+        enumerate(zip(coco_loader, vqa_loader, calvin_loader)),
+        disable=args.rank != 0,
+        total=total_training_steps,
+        initial=(epoch * num_batches_per_epoch),
+    )
+    t.set_description(f"epoch {epoch+1}/{args.num_epochs}")
+
+    mv_avg_loss = []
+    mv_avg_loss_coco = []
+    mv_avg_loss_vqa = []
+    for num_steps, (batch_coco, batch_vqa, batch_calvin) in t:
+        data_time_m.update(time.time() - end)
+        global_step = num_steps + epoch * num_batches_per_epoch
+
+        #### COCO FORWARD PASS ####
+        images = batch_coco[0].to(device_id, dtype=cast_dtype, non_blocking=True)
+        images = rearrange(images, "(b t f) c h w -> b t f c h w", t=1, f=1)
+        input_ids = batch_coco[1][0].to(device_id, dtype=cast_dtype, non_blocking=True)
+        attention_mask = batch_coco[1][1].to(
+            device_id, dtype=cast_dtype, non_blocking=True
+        )
+
+        # set up labels; language model is expected to handle shifting
+        labels = input_ids.clone()
+        labels[labels == tokenizer.pad_token_id] = -100
+        labels[labels == media_token_id] = -100
+        labels = labels.to(device_id)
+
+        def calculate_vl_cross_entropy(logits, labels, mask=None):
+            shift_logits = logits[..., :-1, :].contiguous()
+            shift_labels = labels[..., 1:].contiguous()
+            # Flatten the tokens
+            if mask is None:
+                loss_fct = nn.CrossEntropyLoss()
+                loss = loss_fct(
+                    shift_logits.view(
+                        -1, logits.shape[-1]
+                    ),
+                    shift_labels.view(-1),
+                )
+            else:
+                # TODO: mask is with the same shape of labels, 
+                # 1 represents valid, 0 for non-valid, only calculate loss for valid tokens
+                loss_fct = nn.CrossEntropyLoss(reduction='none')
+                loss = loss_fct(
+                shift_logits.view(
+                        -1, logits.shape[-1]
+                    ),
+                shift_labels.view(-1),
+                )
+                # mask the loss
+                mask = mask[..., 1:].contiguous()
+                loss = loss * mask.reshape(-1)
+                # mean
+                loss = loss.mean()
+            return loss
+
+        # gradient accumulation w/ fsdp cpu offloading requires a no_sync context manager
+        with autocast():
+            output = model(
+                vision_x=images,
+                lang_x=input_ids,
+                attention_mask=attention_mask,
+                mode = 'vision_lang'
+            )
+        
+        logits = output.logits
+        loss_coco = calculate_vl_cross_entropy(logits, labels)
+        mv_avg_loss_coco.append(loss_coco.item())
+        divided_loss_coco = loss_coco * args.vl_task_weights
+        divided_loss_coco = divided_loss_coco / args.gradient_accumulation_steps
+        
+        (divided_loss_coco * args.loss_multiplier_calvin).backward()
+
+        #### VQA FORWARD PASS ####
+        images = batch_vqa[0].to(device_id, dtype=cast_dtype, non_blocking=True)
+        images = rearrange(images, "(b t f) c h w -> b t f c h w", t=1, f=1)
+        input_ids = batch_vqa[1][0].to(device_id, dtype=cast_dtype, non_blocking=True)
+        attention_mask = batch_vqa[1][1].to(
+            device_id, dtype=cast_dtype, non_blocking=True
+        )
+        ques_mask = batch_vqa[2].to(device_id, dtype=cast_dtype, non_blocking=True)
+        # set up labels; language model is expected to handle shifting
+        labels = input_ids.clone()
+        labels[labels == tokenizer.pad_token_id] = -100
+        labels[labels == media_token_id] = -100
+        labels = labels.to(device_id)
+
+        # gradient accumulation w/ fsdp cpu offloading requires a no_sync context manager
+        with autocast():
+            output = model(
+                vision_x=images,
+                lang_x=input_ids.to(device_id),
+                attention_mask=attention_mask.to(device_id),
+                # labels=labels,
+                mode = 'vision_lang'
+            )
+        
+        logits = output.logits
+        loss_vqa = calculate_vl_cross_entropy(logits, labels, ques_mask)
+        mv_avg_loss_vqa.append(loss_vqa.item())
+        divided_loss_vqa = loss_vqa * 0.5
+        divided_loss_vqa = divided_loss_vqa / args.gradient_accumulation_steps
+        (divided_loss_vqa * args.loss_multiplier_calvin).backward()
+        
+        #### CALVIN FORWARD PASS ####
+        images = (batch_calvin[0].to(device_id, dtype=cast_dtype, non_blocking=True).unsqueeze(2).unsqueeze(2))
+        gripper = (batch_calvin[3].to(device_id, dtype=cast_dtype, non_blocking=True).unsqueeze(2).unsqueeze(2))
+
+        # input_ids is LongTensor and does not require conversion precision
+        # repeat the input_ids to match the sequence length of the images
+        if args.fusion_mode != 'vit_concat':
+            input_ids = batch_calvin[1][0].to(device_id, non_blocking=True).unsqueeze(1).repeat(1, images.shape[1], 1)
+        else:
+            input_ids = batch_calvin[1][0].to(device_id, non_blocking=True)
+        # input_ids = batch_calvin[1][0].to(device_id, non_blocking=True)
+
+        # do the same to the attention mask 
+        if args.fusion_mode != 'vit_concat':
+            attention_mask = batch_calvin[1][1].to(device_id, non_blocking=True).unsqueeze(1).repeat(1, images.shape[1], 1)
+        else:
+            attention_mask = batch_calvin[1][1].to(device_id, non_blocking=True)
+        
+        state_tensor = batch_calvin[4].to(device_id, dtype=cast_dtype, non_blocking=True)
+        robot_obs = batch_calvin[5].to(device_id, dtype=cast_dtype, non_blocking=True)
+        if args.clip_state:
+            state_tensor = torch.cat([state_tensor[..., :6], state_tensor[..., [-1]]], dim=-1)
+        labels = batch_calvin[2].to(device_id, dtype=cast_dtype, non_blocking=True)
+        if args.tcp_rel:
+            if args.multi_step_action == 1:
+                labels = world_to_tcp_frame(labels, state_tensor)
+            else:
+                bs, seq_len = labels.shape[:2]
+                labels = world_to_tcp_frame(labels, robot_obs)
+                labels = labels.view(bs, seq_len, args.multi_step_action, -1)
+        
+        state_tensor = state_tensor.unsqueeze(2).unsqueeze(2)
+
+        # merge the batch and the sequence dimension
+        images = images.flatten(0, 1)
+        gripper = gripper.flatten(0, 1)
+        state_tensor = state_tensor.flatten(0, 1)
+        if args.fusion_mode != 'vit_concat':
+            input_ids = input_ids.flatten(0, 1)
+            attention_mask = attention_mask.flatten(0, 1)
+
+        # [:6] is the joint position and [6:] is the gripper control, which is -1, 1, thus we need to convert it to 0, 1
+        if args.use_hist:
+            labels = labels[:, [-1]]  # only calculate last step action
+        if args.fusion_mode == 'vit_concat':
+            labels = labels[:, -1]
+        labels = [labels[..., :6], (labels[..., 6:] + 1) // 2]
+
+        with autocast():
+            output = model(
+                vision_x=images,
+                lang_x=input_ids,
+                attention_mask=attention_mask,
+                # labels=labels,  # loss计算放在外面
+                vision_gripper=gripper,
+                state_tensor=state_tensor if (args.use_state or args.sep_lm_head) else None
+            )
+
+        # compute loss
+        num_actions, bin_actions = output.logits[0], output.logits[1]
+
+        def discretize_actions(pose_action):
+            action_min = -1.001
+            action_max = 1.001
+            action_len = (action_max - action_min) / args.act_disc
+            pose_action = (pose_action - action_min) / action_len
+            pose_action = torch.floor(pose_action).long()
+            return pose_action
+        
+        if args.act_disc != -1:
+            # assert labels[0].max() < 1.0, f"{labels[0].max()} >= 1.0"
+            # assert labels[0].min() > -1.0, f"{labels[0].min()} <= -1.0"
+            labels[0] = discretize_actions(labels[0])
+            assert labels[0].max() < args.act_disc, f"{labels[0].max()} >= {args.act_disc}"
+            assert labels[0].min() >= 0, f"{labels[0].min()} < 0"
+        # reshape for loss calculation
+        if args.multi_step_action != 1:
+            bs, seq_len = num_actions.shape[:2]
+            num_actions = num_actions.reshape(bs, seq_len, args.multi_step_action, -1)
+            bin_actions = bin_actions.reshape(bs, seq_len, args.multi_step_action, -1)
+
+        loss_calvin_bin = torch.nn.functional.binary_cross_entropy(bin_actions, labels[1])
+        if args.act_disc == -1:
+            loss_calvin_num = torch.nn.functional.huber_loss(num_actions, labels[0])
+            if args.real_data:
+                loss_calvin = loss_calvin_num + loss_calvin_bin * 0.05
+            else:
+                loss_calvin = loss_calvin_num + loss_calvin_bin * 0.01
+        else:
+            bs, seq_len = num_actions.shape[:2]
+            num_actions = num_actions.view(bs, seq_len, -1, args.act_disc).permute(0, 3, 1, 2)
+            labels[0] = labels[0].view(bs, seq_len, -1)
+            # print('-'*100)
+            # print(num_actions, labels[0])
+            loss_calvin_num = torch.nn.functional.cross_entropy(num_actions, labels[0])
+            if args.real_data:
+                loss_calvin = loss_calvin_num + loss_calvin_bin * 0.2
+            else:
+                loss_calvin = loss_calvin_num + loss_calvin_bin * 0.1
+        
+
+        divided_loss_calvin = loss_calvin / args.gradient_accumulation_steps
+
+        #### BACKWARD PASS ####
+        loss = (
+            divided_loss_calvin * args.loss_multiplier_calvin
+        )
+        mv_avg_loss.append(loss.item())
+        loss.backward()
+        
+        # clip gradient norm
+        if args.fsdp:
+            """
+            The way we clip gradients with FSDP is different than the non-FSDP case,
+            because during FSDP, gradient norms are computed over certain submodules,
+            rather than the entire model.
+            At least for OPT-125M, this didn't seem to make a difference in performance.
+            """
+            model.clip_grad_norm_(1.0)
+        else:
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+
+        # step optimizer and log
+        if (((num_steps + 1) % args.gradient_accumulation_steps) == 0) or (
+            num_steps == num_batches_per_epoch - 1
+        ):
+            optimizer.step()
+            lr_scheduler.step()
+            optimizer.zero_grad(set_to_none=True)
+
+            # step time and reset end outside of rank 0
+            step_time_m.update(time.time() - end)
+            end = time.time()
+
+            # rank 0 logging
+            if args.rank == 0 and args.report_to_wandb:
+                coco_samples_per_second = (
+                    args.gradient_accumulation_steps
+                    * args.batch_size_vl
+                    * args.world_size
+                    / step_time_m.val
+                )
+                coco_samples_per_second_per_gpu = (
+                    args.gradient_accumulation_steps
+                    * args.batch_size_vl
+                    / step_time_m.val
+                )
+                vqa_samples_per_second = (
+                    args.gradient_accumulation_steps
+                    * args.batch_size_vl
+                    * args.world_size
+                    / step_time_m.val
+                )
+                vqa_samples_per_second_per_gpu = (
+                    args.gradient_accumulation_steps
+                    * args.batch_size_vl
+                    / step_time_m.val
+                )
+                calvin_samples_per_second = (
+                    args.gradient_accumulation_steps
+                    * args.batch_size_calvin
+                    * args.world_size
+                    / step_time_m.val
+                )
+                calvin_samples_per_second_per_gpu = (
+                    args.gradient_accumulation_steps
+                    * args.batch_size_calvin
+                    / step_time_m.val
+                )
+
+                wandb.log(
+                    {
+                        "data_time": data_time_m.avg,
+                        "step_time": step_time_m.avg,
+                        "coco_samples_per_second": coco_samples_per_second,
+                        "coco_samples_per_second_per_gpu": coco_samples_per_second_per_gpu,
+                        "vqa_samples_per_second": vqa_samples_per_second,
+                        "vqa_samples_per_second_per_gpu": vqa_samples_per_second_per_gpu,
+                        "calvin_samples_per_second": calvin_samples_per_second,
+                        "calvin_samples_per_second_per_gpu": calvin_samples_per_second_per_gpu,
+                        "lr": optimizer.param_groups[0]["lr"],
+                    },
+                    commit=False,
+                )
+                step_time_m.reset()
+                data_time_m.reset()
+
+                wandb.log(
+                    {
+                        "loss_coco": loss_coco.item(),
+                        "global_step": global_step,
+                    },
+                    commit=False,
+                )
+                wandb.log(
+                    {"loss_vqa": loss_vqa.item(), "global_step": global_step},
+                    commit=False,
+                )
+
+                wandb.log(
+                    {
+                        "loss_calvin": divided_loss_calvin.item(),
+                        "global_step": global_step,
+                    },
+                    commit=False,
+                )
+
+        # Log loss to console
+        if ((num_steps + 1) % args.logging_steps == 0) and args.rank == 0:
+            print(
+                f"Step {num_steps+1}/{num_batches_per_epoch} of epoch {epoch+1}/{args.num_epochs} complete.  Loss coco: {loss_coco.item():.3f} // Loss vqa: {loss_vqa.item():.3f} // Loss CALVIN: (all){loss_calvin.item():.3f} (mse){loss_calvin_num.item():.3f} (bce){loss_calvin_bin.item():.3f}"
+            )
+        avg_horizon = min(100, len(mv_avg_loss))
+        t.set_postfix({"avg calvin loss": sum(mv_avg_loss[-avg_horizon:]) / avg_horizon, "avg coco loss": sum(mv_avg_loss_coco[-avg_horizon:]) / avg_horizon, "avg vqa loss": sum(mv_avg_loss_vqa[-avg_horizon:]) / avg_horizon,
+                        "loss": loss_calvin.item(), "Lnum": loss_calvin_num.item(), "Lbin": loss_calvin_bin.item()})
 
 
 def train_one_epoch_calvin_two_way(
