@@ -168,10 +168,10 @@ to launch co-train RoboFlamingo with CoCO, VQAV2 and CALVIN. You should update c
 |Fine-tune|ABCD->D (Enrich)|72.0%|48.0%|29.9%|21.1%|14.4%|1.854|
 
 ### Results on VL tasks:
-||||coco|||||VQA
-|----|----|----|----|----|----|----|----|----|
+|||||coco|||||VQA
+|----|----|----|----|----|----|----|----|----|----|
 ||BLEU-1|BLEU-2|BLEU-3|BLEU-4|METEOR|ROUGE_L|CIDEr|SPICE|Acc|
-|Fine-tune (3B, zero-shot)|0.156||0.051|0.018|0.007|0.038|0.148|0.004|0.006|4.09|
+|Fine-tune (3B, zero-shot)|0.156|0.051|0.018|0.007|0.038|0.148|0.004|0.006|4.09|
 |Fine-tune (3B, 4-shot)|0.166|0.056|0.020|0.008|0.042|0.158|0.004|0.008|3.87|OpenFlamingo (3B, 4-shot) |0.608||0.459|0.329|0.232|0.220|0.491|0.808|0.164|43.86
 |Co-Train (3B, zero-shot)|0.225|0.158|0.107|0.072|0.124|0.334|0.345||0.085|36.37|Co-Train (3B, 4-shot)|0.318|0.236|0.167|0.116|0.157|0.377|0.493|0.110|38.73
 |Original Flamingo (80B, fine-tuned)|-|-|-|-|-|-|1.381|-|82.0
