@@ -88,7 +88,7 @@ Replace the `${lang_encoder_path}` and `${tokenizer_path}` of the path dictionar
 ### Step 1
 Clone this repo
 ```
-git clone https://github.com/lixinghang12/RoboFlamingo.git
+git clone https://github.com/RoboFlamingo/RoboFlamingo.git
 ```
 Install the required packages:
 ```
