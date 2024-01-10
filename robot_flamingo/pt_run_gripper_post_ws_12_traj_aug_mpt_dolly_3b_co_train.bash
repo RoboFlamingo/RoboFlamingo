@@ -18,7 +18,7 @@ source /mnt/bn/robotics/resources/anaconda3_arnold/bin/activate calvin_mpt
 #python3 -m torch.distributed.launch --nnodes=1 --nproc_per_node=2  --master_port=6042 robot_flamingo/train/train_calvin.py \
 torchrun --nnodes=1 --nproc_per_node=8 --master_port=6042 robot_flamingo/train/train_calvin.py \
     --report_to_wandb \
-    --co_train \
+    --cotrain \
     --llm_name mpt_dolly_3b \
     --traj_cons \
     --use_gripper \
