@@ -177,6 +177,8 @@ to launch co-train RoboFlamingo with CoCO, VQAV2 and CALVIN. You should update C
 |Original Flamingo (80B, fine-tuned)|-|-|-|-|-|-|1.381|-|82.0
 
 ## Acknowledgment
+The logo is generated using [MidJourney](https://www.midjourney.com/home)
+
 This work uses code from the following open-source projects and datasets:
 
 #### CALVIN
