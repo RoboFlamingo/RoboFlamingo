@@ -44,7 +44,7 @@ model, image_processor, tokenizer = create_model_and_transforms(
     decoder_type='lstm',
 )
 ```
-The `cross_attn_every_n_layers` argument controls how often cross-attention layers are applied and should be consistent with the VLM. The `decoder_type` argument controls the type of the decoder, currently we support `lstm`, `fc`, `diffusion` and `GPT`.
+The `cross_attn_every_n_layers` argument controls how often cross-attention layers are applied and should be consistent with the VLM. The `decoder_type` argument controls the type of the decoder, currently, we support `lstm`, `fc`, `diffusion` (bugs exist for the dataloader), and `GPT`.
 
 ## Performance
 We report results on the [CALVIN](https://github.com/mees/calvin) benchmark.
@@ -88,7 +88,7 @@ Replace the `${lang_encoder_path}` and `${tokenizer_path}` of the path dictionar
 ### Step 1
 Clone this repo
 ```
-git clone https://github.com/lixinghang12/RoboFlamingo.git
+git clone https://github.com/RoboFlamingo/RoboFlamingo.git
 ```
 Install the required packages:
 ```
@@ -138,14 +138,14 @@ torchrun --nnodes=1 --nproc_per_node=8 --master_port=6042 robot_flamingo/train/t
 
 `${log_file}` is the path to the log file.
 
-We also provide `robot_flamingo/pt_run_gripper_post_ws_12_traj_aug_mpt_dolly_3b.bash` to launch the training.
+We also provide `robot_flamingo/pt_run_gripper_post_ws_12_traj_aug_mpt_dolly_3b.bash` to launch the training. This bash finetunes the `MPT-3B-IFT` version of the OpenFlamingo model, which contains the **default** hyperparameters to train the model, and corresponds to the best results in the paper.
 
 
 ## Evaluating the model on the CALVIN benchmark
 ```
 python eval_ckpts.py
 ```
-By adding the checkpoint name and directory into `eval_ckpts.py`, the script would automaticly load the model and evaluate it. For example, if you want to evaluate the checkpoint at path 'your-checkpoint-path', you can modify the `ckpt_dir` and `ckpt_names` variable in eval_ckpts.py, the evaluation results would be saved as 'logs/your-checkpoint-prefix.log'.
+By adding the checkpoint name and directory into `eval_ckpts.py`, the script would automatically load the model and evaluate it. For example, if you want to evaluate the checkpoint at path 'your-checkpoint-path', you can modify the `ckpt_dir` and `ckpt_names` variables in eval_ckpts.py, and the evaluation results would be saved as 'logs/your-checkpoint-prefix.log'.
 
 ## Co-finetune with both robot data (CALVIN) and vision-language data (COCO caption, VQA)
 The results shown below indicate that co-training could preserve most ability of the VLM backbone on VL tasks, while losing a bit of performance on robot tasks. 
@@ -154,7 +154,7 @@ use
 ```
 bash robot_flamingo/pt_run_gripper_post_ws_12_traj_aug_mpt_dolly_3b_co_train.bash
 ```
-to launch co-train RoboFlamingo with CoCO, VQAV2 and CALVIN. You should update coco and vqa paths in `get_coco_dataset` and `get_vqa_dataset` in `robot_flamingo/data/data.py`.
+to launch co-train RoboFlamingo with CoCO, VQAV2 and CALVIN. You should update CoCO and VQA paths in `get_coco_dataset` and `get_vqa_dataset` in `robot_flamingo/data/data.py`.
 
 ### Results on the CALVIN benchmark:
 
@@ -168,15 +168,17 @@ to launch co-train RoboFlamingo with CoCO, VQAV2 and CALVIN. You should update c
 |Fine-tune|ABCD->D (Enrich)|72.0%|48.0%|29.9%|21.1%|14.4%|1.854|
 
 ### Results on VL tasks:
-||||coco|||||VQA
-|----|----|----|----|----|----|----|----|----|
+|||||coco|||||VQA
+|----|----|----|----|----|----|----|----|----|----|
 ||BLEU-1|BLEU-2|BLEU-3|BLEU-4|METEOR|ROUGE_L|CIDEr|SPICE|Acc|
-|Fine-tune (3B, zero-shot)|0.156||0.051|0.018|0.007|0.038|0.148|0.004|0.006|4.09|
+|Fine-tune (3B, zero-shot)|0.156|0.051|0.018|0.007|0.038|0.148|0.004|0.006|4.09|
 |Fine-tune (3B, 4-shot)|0.166|0.056|0.020|0.008|0.042|0.158|0.004|0.008|3.87|OpenFlamingo (3B, 4-shot) |0.608||0.459|0.329|0.232|0.220|0.491|0.808|0.164|43.86
-|Co-Train (3B, zero-shot)|0.225|0.158|0.107|0.072|0.124|0.334|0.345||0.085|36.37|Co-Train (3B, 4-shot)|0.318|0.236|0.167|0.116|0.157|0.377|0.493|0.110|38.73
+|Co-Train (3B, zero-shot)|0.225|0.158|0.107|0.072|0.124|0.334|0.345|0.085|36.37|Co-Train (3B, 4-shot)|0.318|0.236|0.167|0.116|0.157|0.377|0.493|0.110|38.73
 |Original Flamingo (80B, fine-tuned)|-|-|-|-|-|-|1.381|-|82.0
 
 ## Acknowledgment
+The logo is generated using [MidJourney](https://www.midjourney.com/home)
+
 This work uses code from the following open-source projects and datasets:
 
 #### CALVIN
