@@ -10,7 +10,7 @@ import numpy as np
 import torch
 import wandb
 from huggingface_hub import hf_hub_download
-
+import itertools
 from torch.nn.parallel import DistributedDataParallel as DDP
 
 from robot_flamingo.data.data import get_data
@@ -387,6 +387,12 @@ def main():
         calvin_dataset = get_data(args, image_processor, tokenizer, "real")
     else:
         calvin_dataset = get_data(args, image_processor, tokenizer, "calvin")
+    
+    if args.co_train:
+        coco_loader = get_data(args, image_processor, tokenizer, "coco")
+        vqa_loader = get_data(args, image_processor, tokenizer, "vqa")
+        coco_cycle_loader = itertools.cycle(coco_loader)
+        vqa_cycle_loader = itertools.cycle(vqa_loader)
 
     random_seed(args.seed, args.rank)
 
@@ -536,6 +542,20 @@ def main():
                 optimizer=optimizer,
                 lr_scheduler=lr_scheduler,
                 calvin_loader=calvin_loader,
+                device_id=device_id,
+                wandb=wandb,
+            )
+        elif args.co_train:
+            train_one_epoch_calvin_cotrain(
+                args=args,
+                model=ddp_model,
+                epoch=epoch,
+                tokenizer=tokenizer,
+                optimizer=optimizer,
+                lr_scheduler=lr_scheduler,
+                calvin_loader=calvin_loader,
+                coco_loader=coco_cycle_loader,
+                vqa_loader=vqa_cycle_loader,
                 device_id=device_id,
                 wandb=wandb,
             )
