@@ -504,8 +504,8 @@ def train_one_epoch_calvin(
         global_step = num_steps + epoch * num_batches_per_epoch
         
         # put images and labels on device
-        images = (batch_calvin[0].to(device_id, dtype=cast_dtype, non_blocking=True).unsqueeze(2).unsqueeze(2))
-        gripper = (batch_calvin[3].to(device_id, dtype=cast_dtype, non_blocking=True).unsqueeze(2).unsqueeze(2))
+        images = (batch_calvin[0].to(device_id, dtype=cast_dtype, non_blocking=True).unsqueeze(2).unsqueeze(2)) # 代表static_images
+        gripper = (batch_calvin[3].to(device_id, dtype=cast_dtype, non_blocking=True).unsqueeze(2).unsqueeze(2)) # 代表gripper_images
 
         # input_ids is LongTensor and does not require conversion precision
         # repeat the input_ids to match the sequence length of the images
@@ -559,7 +559,7 @@ def train_one_epoch_calvin(
                 # labels=labels,  # loss计算放在外面
                 vision_gripper=gripper,
                 state_tensor=state_tensor if (args.use_state or args.sep_lm_head) else None
-            )
+            ) # 这里的model是ddp_model,采用这种方法赋值等价于采用初始model.forward()方法,具体地,该前向传播算法为open_flamingo的前向传播方法
 
         # compute loss
         num_actions, bin_actions = output.logits[0], output.logits[1]
