@@ -83,13 +83,15 @@ class MPTFlamingo(nn.Module):
             self.replan = min(int(replan * self.window_size), 180)
         self.refresh = refresh
         if hasattr(lang_encoder.config, "d_model"):
-            self.lang_dim = lang_encoder.config.d_model  # mpt uses d_model
+            # self.lang_dim = lang_encoder.config.d_model  # mpt uses d_model
+            self.lang_dim = lang_encoder.config.hidden_size
         else:
             self.lang_dim = lang_encoder.config.hidden_size
 
         self.residual = residual
         print(self.vis_dim, self.lang_dim)
         print(lang_encoder.config)
+
         if not debug:
             if 'llama' in llm:
                 self.lang_encoder.init_flamingo(
@@ -126,7 +128,7 @@ class MPTFlamingo(nn.Module):
         if decoder_type == 'lstm':
             lm_head = DeterministicDecoder(in_features, self.window_size, 
             use_diff=use_diff, last_action=last_action, fusion_mode=fusion_mode, use_state=use_state, return_feature=return_feature, multi_step_action=multi_step_action, pooling=pooling)
-            self.lang_encoder.lm_head = lm_head
+            # self.lang_encoder.lm_head = lm_head
         elif decoder_type == 'fc':
             if use_hist:
                 self.lang_encoder.lm_head = self.action_head = FCDecoder(in_features, self.window_size, 
@@ -157,8 +159,8 @@ class MPTFlamingo(nn.Module):
         sep_lm_head = True
         self.sep_lm_head = sep_lm_head
         if sep_lm_head:
-            self.lm_head = self.lang_encoder.lm_head
-            self.lang_encoder.lm_head = nn.Identity()
+            self.lm_head = lm_head
+            # self.lang_encoder.lm_head = nn.Identity()
 
     def forward(
         self,
@@ -233,7 +235,6 @@ class MPTFlamingo(nn.Module):
             use_cache=use_cache,
             output_hidden_states=True
         )
-
         output_hs = output.hidden_states[-1]
         output_hs = self.lm_head(output_hs, state_tensor=state_tensor, return_feature=return_feature)
         output.logits = output_hs

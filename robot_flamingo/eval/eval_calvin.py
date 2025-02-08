@@ -341,7 +341,7 @@ def main():
         name_attrs = args.evaluate_from_checkpoint.split('_')
         hidden_size = int(name_attrs[name_attrs.index('gpt')+1])
         args.hidden_size = hidden_size
-    for name in ['mpt_3b', 'mpt_4b', 'mpt_9b', 'mpt_dolly_3b', 'mpt_base_4b']:
+    for name in ['mpt_3b', 'mpt_4b', 'mpt_9b', 'mpt_dolly_3b', 'mpt_base_4b', 'mamba_790m_hf', 'mamba_1.4b_hf']:
         if name in args.evaluate_from_checkpoint:
             args.llm_name = name
             break
@@ -361,7 +361,7 @@ def main():
     print("device_id: ", device_id)
     print("world_size: ", torch.distributed.get_world_size())
     random_seed(args.seed)
-
+    args.use_state = False
     model, image_processor, tokenizer = create_model_and_transforms(
         args.vision_encoder_path,
         args.vision_encoder_pretrained,
@@ -401,8 +401,8 @@ def main():
         # refresh=args.refresh
     )
     checkpoint_path = args.openflamingo_checkpoint
-    print("Loading origin flamingo checkpoint from ", checkpoint_path)
-    model.load_state_dict(torch.load(checkpoint_path), strict=False)
+    # print("Loading origin flamingo checkpoint from ", checkpoint_path)
+    # model.load_state_dict(torch.load(checkpoint_path), strict=False)
 
     if args.sep_lm_head:
         model.lm_head.requires_grad_(True)
@@ -435,8 +435,9 @@ def main():
     if args.rank == 0:
         print(f"Loading robot-flamingo checkpoint from {args.evaluate_from_checkpoint}")
     checkpoint = torch.load(args.evaluate_from_checkpoint, map_location="cpu")
-    ddp_model.load_state_dict(checkpoint["model_state_dict"], False)  # 只保存了求梯度的部分
-
+    ddp_model.load_state_dict(checkpoint, strict=True)  # 只保存了求梯度的部分
+    if args.rank == 0:
+        print(f"Having loaded robot-flamingo checkpoint from {args.evaluate_from_checkpoint}")
     ddp_model.eval()
     eval_log_dir = None
     if args.visualize:

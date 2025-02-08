@@ -550,7 +550,9 @@ def train_one_epoch_calvin(
         if args.fusion_mode == 'vit_concat':
             labels = labels[:, -1]
         labels = [labels[..., :6], (labels[..., 6:] + 1) // 2]
-
+        if input_ids.shape[1] < 20: 
+            padding = torch.zeros((input_ids.shape[0], 20-input_ids.shape[1]), dtype=input_ids.dtype).to(input_ids.device)
+            input_ids = torch.cat((input_ids, padding), dim=1)
         with autocast():
             output = model(
                 vision_x=images,
@@ -569,13 +571,18 @@ def train_one_epoch_calvin(
             bs, seq_len = num_actions.shape[:2]
             num_actions = num_actions.reshape(bs, seq_len, args.multi_step_action, -1)
             bin_actions = bin_actions.reshape(bs, seq_len, args.multi_step_action, -1)
-
-        loss_calvin_num = torch.nn.functional.huber_loss(num_actions, labels[0])
+        # loss_calvin_num = torch.nn.functional.huber_loss(num_actions, labels[0])
+        loss_calvin_num = torch.nn.functional.huber_loss(num_actions[..., :3], labels[0][..., :3])
+        loss_calvin_pixel = torch.nn.functional.huber_loss(num_actions[..., 3:], labels[0][..., 3:])
+        # loss_calvin_pixel = 1 - torch.nn.functional.cosine_similarity(num_actions[..., 3:], labels[0][..., 3:], dim=-1).mean()
         loss_calvin_bin = torch.nn.functional.binary_cross_entropy(bin_actions, labels[1])
         if args.real_data:
-            loss_calvin = loss_calvin_num + loss_calvin_bin * 0.05
+            # loss_calvin = loss_calvin_num + loss_calvin_bin * 0.05
+            loss_calvin = 3 * loss_calvin_num + 1.5 * loss_calvin_pixel + loss_calvin_bin * 0.05
         else:
-            loss_calvin = loss_calvin_num + loss_calvin_bin * 0.01
+            # loss_calvin = loss_calvin_num + loss_calvin_bin * 0.01
+            loss_calvin = 3 * loss_calvin_num + 1.5 * loss_calvin_pixel + loss_calvin_bin * 0.05
+
 
         divided_loss_calvin = loss_calvin / args.gradient_accumulation_steps
 
@@ -629,23 +636,24 @@ def train_one_epoch_calvin(
 
                 wandb.log(
                     {
-                        "data_time": data_time_m.avg,
-                        "step_time": step_time_m.avg,
-                        "calvin_samples_per_second": calvin_samples_per_second,
-                        "calvin_samples_per_second_per_gpu": calvin_samples_per_second_per_gpu,
-                        "lr": optimizer.param_groups[0]["lr"],
+                        "Performance Group/data_time": data_time_m.avg,
+                        "Performance Group/step_time": step_time_m.avg,
+                        "Performance Group/calvin_samples_per_second": calvin_samples_per_second,
+                        "Performance Group/calvin_samples_per_second_per_gpu": calvin_samples_per_second_per_gpu,
+                        "Performance Group/lr": optimizer.param_groups[0]["lr"],
                     },
-                    commit=False,
+                    commit=True,
                 )
                 step_time_m.reset()
                 data_time_m.reset()
 
                 wandb.log(
                     {
-                        "loss_calvin": divided_loss_calvin.item(),
-                        "global_step": global_step,
+                        "Loss Group/loss_calvin": loss_calvin.item(),
+                        "Loss Group/divided_loss_calvin": divided_loss_calvin.item(),
+                        "Loss Group/global_step": global_step,
                     },
-                    commit=False,
+                    commit=True,
                 )
 
 
@@ -678,10 +686,15 @@ def train_one_epoch_calvin(
                 if args.delete_previous_checkpoint:
                     if epoch > 0:
                         os.remove(ckpt_path)
-
+                state_dict = model.state_dict()
+                compress_token_type = os.environ['COMPRESS_TOKEN_TYPE'].lower()
+                # torch.save(state_dict, f"/{os.getcwd().split('/')[1]}/dmh/hydra/checkpoints/RoboFlamingo_cross_mambablock_Step{global_step}_tokenizer_grad8_window_size_12.pth")
+                # torch.save(state_dict, f"/{os.getcwd().split('/')[1]}/dmh/hydra/checkpoints/RoboFlamingo_cross_mambablock_pre_truncate_lr3e-5_Step{global_step}_tokenizer_grad8_window_size_12.pth")
+                torch.save(state_dict, f"/{os.getcwd().split('/')[1]}/dmh/hydra/checkpoints/RoboFlamingo_cross_mambablock_compress_type_{compress_token_type}_lr3e-5_Step{global_step}_tokenizer_grad8_window_size_12_mamba_2.8b_hf_post.pth")
+                # torch.save(state_dict, f"/{os.getcwd().split('/')[1]}/dmh/hydra/checkpoints/RoboFlamingo_cross_mambablock_compress_type_{compress_token_type}_lr3e-5_Step{global_step}_tokenizer_grad8_window_size_12_mamba_1.4b_hf_post_new_loss.pth")
 
 def train_one_epoch_calvin_cotrain(
-    args,
+    args, 
     model,
     epoch,
     calvin_loader,

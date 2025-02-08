@@ -38,3 +38,6 @@ lang_simi*
 *plot.py
 void.py
 test*.py
+
+checkpoints/
+logs_new/

@@ -6,8 +6,9 @@ import torch
 from einops import rearrange, repeat
 from einops_exts import rearrange_many
 from torch import einsum, nn
+from transformers.models.mamba.modeling_mamba import MambaBlock
 
-
+import os
 def exists(val):
     return val is not None
 
@@ -20,7 +21,37 @@ def FeedForward(dim, mult=4):
         nn.GELU(),
         nn.Linear(inner_dim, dim, bias=False),
     )
+    
+class feedforward(nn.Module):
+    def __init__(self, dim, mult=4):
+        super().__init__()
+        inner_dim = int(dim * mult)
+        self.layernorm = nn.LayerNorm(dim)
+        self.linear1 = nn.Linear(dim, inner_dim, bias=False)
+        compress_token_type = os.environ['COMPRESS_TOKEN_TYPE'].upper()
+        if compress_token_type == "POOL":
+            self.compress_token_conv = nn.AdaptiveAvgPool1d(20) 
+        elif compress_token_type == "LINEAR":
+            self.compress_token_conv = nn.Linear(148, 20)
+        else:
+            raise f"COMPRESS_TOKEN_TYPE should be LINEAR or POOL, but your COMPRESS_TOKEN_TYPE is {compress_token_type}."
+        
+        self.act1 = nn.GELU()
+        self.act2 = nn.GELU()
+        self.linear2 = nn.Linear(inner_dim, dim, bias=False)
 
+    def forward(self, x):
+        x = self.layernorm(x)
+        x = self.linear1(x)
+        x = self.act1(x)
+        x = x.permute(0, 2, 1)
+        x = self.compress_token_conv(x)
+        x = x.permute(0, 2, 1)
+        x = self.act2(x)
+        x = self.linear2(x)
+        
+        return x
+        
 
 class PerceiverAttention(nn.Module):
     def __init__(self, *, dim, dim_head=64, heads=8):
@@ -277,3 +308,95 @@ class GatedCrossAttentionBlock(nn.Module):
         x = self.ff(x) * self.ff_gate.tanh() + x
 
         return x
+
+class CrossMambaBlock(nn.Module):
+    def __init__(
+        self,
+        dim,  # 1536
+        dim_visual,  # 1024
+        config,
+        layer_idx,
+        intermediate_size=512,
+        ff_mult=0.5,
+    ):
+        super().__init__()
+        config.intermediate_size = intermediate_size
+        self.layer = MambaBlock(config, layer_idx)
+        self.visual_to_text = nn.Linear(dim_visual, dim, bias=False)
+
+        self.attn_gate = nn.Parameter(torch.tensor([0.0]))
+        self.ff = feedforward(dim, mult=ff_mult)
+        self.ff_gate = nn.Parameter(torch.tensor([0.0]))
+
+    def forward(
+        self,
+        x,
+        media,
+    ):
+
+        # Ensure media has the correct shape
+        assert media.shape[-1] == self.visual_to_text.in_features, (
+            f"Expected media with last dimension {self.visual_to_text.in_features}, "
+            f"but got {media.shape[-1]}"
+        )
+        
+
+        media = rearrange(media, "b t n d -> b (t n) d")
+        
+        media_len = media.shape[1]
+        media = self.visual_to_text(media)
+        hidden_states = torch.cat((media, x), dim=1)
+        # import pdb; pdb.set_trace()
+
+        hidden_states = self.layer(hidden_states)
+        hidden_states = (hidden_states * self.attn_gate.tanh() + hidden_states)
+        
+        
+        hidden_states = self.ff(hidden_states) * self.ff_gate.tanh() + x
+        return hidden_states
+
+    # def forward(
+    #     self,
+    #     x,
+    #     media,
+    # ):
+    #     print(f"text shape : {x.shape}")
+    #     print(f"image shape : {media.shape}")
+    #     # Ensure media has the correct shape
+    #     assert media.shape[-1] == self.visual_to_text.in_features, (
+    #         f"Expected media with last dimension {self.visual_to_text.in_features}, "
+    #         f"but got {media.shape[-1]}"
+    #     )
+
+    #     media = rearrange(media, "b t n d -> b (t n) d")
+        
+    #     media_len = media.shape[1]
+    #     media = self.visual_to_text(media)
+    #     hidden_states = torch.cat((media, x), dim=1)
+    #     hidden_states = (self.layer(hidden_states)[:, media_len:, :] * self.attn_gate.tanh() + x)
+    #     hidden_states = self.ff(hidden_states) * self.ff_gate.tanh() + hidden_states
+        
+    #     return hidden_states
+        
+    # def forward(
+    #     self,
+    #     x,
+    #     media,
+    # ):
+    #     # Ensure media has the correct shape
+    #     assert media.shape[-1] == self.visual_to_text.in_features, (
+    #         f"Expected media with last dimension {self.visual_to_text.in_features}, "
+    #         f"but got {media.shape[-1]}"
+    #     )
+
+    #     media = rearrange(media, "b t n d -> b (t n) d")
+        
+    #     media_len = media.shape[1]
+    #     media = self.visual_to_text(media)
+    #     hidden_states = torch.cat((media, x), dim=1)
+    #     hidden_states = (self.layer(hidden_states) * self.attn_gate.tanh() + hidden_states)
+    #     hidden_states = self.ff(hidden_states) * self.ff_gate.tanh() + hidden_states
+        
+    #     return hidden_states[:, media_len:, :]
+        
+        

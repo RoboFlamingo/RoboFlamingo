@@ -259,7 +259,7 @@ class BaseCalvinDataset(Dataset):
         self.aux_lang_loss_window = aux_lang_loss_window
         self.traj_cons = traj_cons
        
-        with open('/mnt/bn/robotics/lxh/robot-flamingo/enrich_lang_annotations.json', 'r') as f:
+        with open('/' + os.getcwd().split('/')[1] + '/dmh/hydra/enrich_lang_annotations.json', 'r') as f:
             self.enrich_lang = json.load(f)
         self.text_aug = text_aug
 

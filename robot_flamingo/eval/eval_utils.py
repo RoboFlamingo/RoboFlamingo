@@ -222,6 +222,9 @@ class ModelWrapper(CalvinBaseModel):
             device = 'cuda'
             image_x = image_x.to(device)
             text_x = text_x.to(device)
+            if text_x.shape[1] < 20: 
+                padding = torch.zeros((text_x.shape[0], 20-text_x.shape[1]), dtype=text_x.dtype).to(text_x.device)
+                text_x = torch.cat((text_x, padding), dim=1)
             mask = mask.to(device)
             if gripper is not None:
                 gripper = gripper.to(device)
@@ -426,13 +429,13 @@ def evaluate_policy_ddp(model, env, epoch, calvin_conf_path, eval_log_dir=None, 
     
     # val_annotations = OmegaConf.load(conf_dir / "annotations/new_playtable_validation.yaml")
     if diverse_inst:
-        with open('/mnt/bn/robotics/lxh/robot-flamingo/lang_annotation_cache.json', 'r') as f:
+        with open('/' + os.getcwd().split('/')[1] + '/dmh/hydra/lang_annotation_cache.json', 'r') as f:
             val_annotations = json.load(f)
     else:
         val_annotations = OmegaConf.load(conf_dir / "annotations/new_playtable_validation.yaml")
 
     eval_log_dir = get_log_dir(eval_log_dir)
-    with open('/mnt/bn/robotics/lxh/robot-flamingo/eval_sequences.json', 'r') as f:
+    with open('/' + os.getcwd().split('/')[1] + '/dmh/hydra/eval_sequences.json', 'r') as f:
         eval_sequences = json.load(f)
     device_num = int(torch.distributed.get_world_size())
     device_id = torch.distributed.get_rank()
@@ -513,6 +516,7 @@ def rollout(env, model, task_oracle, subtask, val_annotations, plans, debug, eva
     Run the actual rollout on one subtask (which is one natural language instruction).
     """
     planned_actions = []
+    debug = True
     if debug:
         print(f"{subtask} ", end="")
         time.sleep(0.5)

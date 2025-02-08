@@ -332,7 +332,7 @@ class DeterministicDecoder(ActionDecoder):
                 
                 input_feature = torch.cat([rgb_feat, gripper_feat], dim=-1)
             else:
-                input_feature = self.global_1d_pool(input_feature.permute(0, 2, 1)).squeeze(-1)
+                input_feature = self.global_1d_pool(input_feature.permute(0, 2, 1)).squeeze(-1)  # 和image_feature变为同一个维度
         input_feature = input_feature.reshape(-1, self.window_size, input_feature.shape[1])
         if self.return_feature:
             org_feat = copy.deepcopy(input_feature) 

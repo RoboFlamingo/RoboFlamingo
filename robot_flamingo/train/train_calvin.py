@@ -290,7 +290,7 @@ def main():
     )
     # Co-Train settings
     parser.add_argument(
-        "--cotrain",
+        "--co_train",
         default=False,
         action="store_true"
     )
@@ -371,12 +371,13 @@ def main():
         no_image_patch=args.no_image_patch,
         global_latent=args.global_latent,
     )
-
     checkpoint_path = args.openflamingo_checkpoint
-    if not args.debug and not args.no_pretrain:
-        model.load_state_dict(torch.load(checkpoint_path), strict=False)
-        if args.residual:
-            model.lang_encoder.clone_parameters()
+    # print(f"model: {model}")
+    # print(f"checkpoint_path : {checkpoint_path}")
+    # if not args.debug and not args.no_pretrain:
+    #     model.load_state_dict(torch.load(checkpoint_path, map_location="cpu"), strict=False)
+    #     if args.residual:
+    #         model.lang_encoder.clone_parameters()
 
     print(
         f"Flamingo model initialized with {sum(p.numel() for p in model.parameters() if p.requires_grad)} trainable parameters"
@@ -419,7 +420,7 @@ def main():
         normalizer.fit(all_actions, last_n_dims=1, mode='limits')
 
     model = model.to(device_id)
-
+    print(model.lang_encoder)
     ddp_model = DDP(model, device_ids=[device_id], find_unused_parameters=True)
 
     def get_grouped_params(model):
